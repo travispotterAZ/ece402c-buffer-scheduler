@@ -1,3 +1,6 @@
+# Author: Andrew Kostick
+# This file contains the function to open and load the csv file then create pages of weather data based on the PAGE_SIZE.
+
 import csv
 
 PAGE_SIZE = 100 
