@@ -11,22 +11,35 @@
 from uuid import uuid4 #Allows for page number generation
 
 class Page:
+    AVAILABLE  = -1
+    REFERENCED =  0
+    PINNED     =  1
 
     def __init__(self, id, size):
         self.index = id
         self.page_number = uuid4()
-        self.pin_count = 0
+        self.is_pinned = 0
         self.dirty = False
-        self.state = -1
+        self.state = AVAILABLE
+        self.data       = []
 
     def increment_pin_count(self):
-        self.pin_count += 1
+        self.is_pinned = 1
 
     def decrement_pin_count(self):
-        self.pin_count -= 1
+        self.is_pinned = 0
 
     def is_dirty(self):
         return self.dirty
+    
+    def is_pinned(self):
+        return self.is_pinned > 0
+    
+    #Clearing page data and resetting metadata for reuse
+    def reset(self):
+        self.page_id   = None
+        self.pin_count = 0
+        self.dirty     = False
+        self.state     = Page.AVAILABLE
+        self.data      = []
 
-    def get_pin_count(self):
-        return self.pin_count
