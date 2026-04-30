@@ -1,0 +1,86 @@
+This file is for describing the different columns in the weather.csv
+
+STATION:
+The unique ID of the weather station that recorded the data
+
+DATE:
+The day the weather was recorded
+
+LATITUDE:
+The north/south geographic coordinate of the weather station
+
+LONGITUDE:
+The east/west geographic coordinate of the weather station
+
+ELEVATION:
+The height of the weather station above sea level in meters
+
+NAME:
+The name and country of the weather station
+
+TEMP:
+The average temperature for the day in Fahrenheit
+
+TEMP_ATTRIBUTES:
+The number of observations used to calculate the daily temperature
+
+DEWP:
+The average dew point temperature for the day in Fahrenheit
+
+DEWP_ATTRIBUTES:
+The number of observations used to calculate the dew point
+
+SLP:
+The average sea level pressure for the day in millibars
+
+SLP_ATTRIBUTES:
+The number of observations used to calculate sea level pressure
+
+STP:
+The average station pressure for the day in millibars
+
+STP_ATTRIBUTES:
+The number of observations used to calculate station pressure
+
+VISIB:
+The average visibility for the day in miles
+
+VISIB_ATTRIBUTES:
+The number of observations used to calculate visibility
+
+WDSP:
+The average wind speed for the day in knots
+
+WDSP_ATTRIBUTES:
+The number of observations used to calculate wind speed
+
+MXSPD:
+The maximum sustained wind speed for the day in knots
+
+GUST:
+The maximum wind gust for the day in knots
+
+MAX:
+The maximum temperature for the day in Fahrenheit
+
+MAX_ATTRIBUTES:
+Indicates whether the max temperature was from an hourly observation or a 6-hour observation
+
+MIN:
+The minimum temperature for the day in Fahrenheit
+
+MIN_ATTRIBUTES:
+Indicates whether the min temperature was from an hourly observation or a 6-hour observation
+
+PRCP:
+The total precipitation for the day in inches
+
+PRCP_ATTRIBUTES:
+A flag indicating the time period and quality of the precipitation measurement
+
+SNDP:
+The snow depth on the ground in inches
+
+FRSHTT:
+A series of flags indicating weather conditions like fog, rain, snow, hail, thunder, and tornado
+
