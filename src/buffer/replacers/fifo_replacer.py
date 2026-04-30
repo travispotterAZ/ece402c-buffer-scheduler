@@ -1,4 +1,7 @@
+#Author: Travis Potter
 #FIFO Algorithm --- evict the first page that was loaded into the buffer pool when a victim is needed
+
+
 
 from collections import deque
 from buffer import page
