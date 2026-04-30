@@ -3,12 +3,9 @@
 
 
 from buffer.page import Page
-
+from buffer.replacers.replacer import Replacer
 
 class LRUReplacer(Replacer):
-    AVAILABLE = -1
-    REFERENCED = 0
-    PINNED = 1
 
     def __init__(self, buffer_manager):
         super().__init__()
