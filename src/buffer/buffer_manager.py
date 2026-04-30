@@ -1,3 +1,6 @@
+#Brain of system
+# - Coordination of disk and buffer pool
+
 from buffer.replacers.lru_replacer import LRUReplacer
 from buffer.page import Page
 from buffer.disk_manager import DiskManager

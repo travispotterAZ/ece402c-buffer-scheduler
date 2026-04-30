@@ -1,3 +1,7 @@
+#Layer talking to files on disk
+# -Handles files
+# - Other layers ask this layer to read/write pages to disk
+
 class DiskManager:
 
     def __init__(self, page_size):

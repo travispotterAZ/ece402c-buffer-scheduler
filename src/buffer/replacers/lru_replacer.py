@@ -1,4 +1,8 @@
-from buffer.replacers.replacer import Replacer
+#LRU Algorithm --- evict the least recently used page when a victim is needed
+# - Uses a circular list to track the state of pages in the buffer pool
+
+
+from buffer.page import Page
 
 
 class LRUReplacer(Replacer):
@@ -12,7 +16,7 @@ class LRUReplacer(Replacer):
         self.frame_table = buffer_manager.getFrameTable()
 
         for frames in self.frame_table:
-            frames.state = AVAILABLE
+            frames.state = Page.AVAILABLE
 
         self.head = -1
 
