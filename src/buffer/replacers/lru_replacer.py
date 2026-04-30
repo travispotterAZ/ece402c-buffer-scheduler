@@ -1,4 +1,4 @@
-from src.replacer import Replacer
+from buffer.replacers.replacer import Replacer
 
 
 class LRUReplacer(Replacer):

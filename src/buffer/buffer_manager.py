@@ -1,6 +1,6 @@
-from src.lru_replacer import LRUReplacer
-from src.page import Page
-from src.disk_manager import DiskManager
+from buffer.replacers.lru_replacer import LRUReplacer
+from buffer.page import Page
+from buffer.disk_manager import DiskManager
 
 
 class BufferPoolManager:
