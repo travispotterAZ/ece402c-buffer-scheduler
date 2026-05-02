@@ -1,3 +1,5 @@
+# Author: Ryan Brass
+# Tests sample weather queries with FCFS scheduler
 import time
 
 from interfaces import Query

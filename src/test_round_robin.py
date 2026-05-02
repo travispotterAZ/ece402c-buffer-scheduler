@@ -1,3 +1,5 @@
+# Author: Ryan Brass
+# Tests sample weather queries with round robin scheduler
 import time
 
 from interfaces import Query

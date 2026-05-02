@@ -1,3 +1,5 @@
+# Author: Ryan Brass
+# Defines the shared Query and Task data structures used by the scheduler
 from dataclasses import dataclass, field
 from datetime import datetime
 import itertools

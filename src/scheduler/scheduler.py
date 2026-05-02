@@ -1,3 +1,5 @@
+# Author: Ryan Brass
+# Defines thread pool scheduler that manages processing of weather query tasks
 import queue
 import threading
 import time
@@ -27,17 +29,26 @@ class ThreadPoolScheduler:
         reject_when_full: bool = False,
         query_handler: Optional[Callable[[Query, int], str]] = None,
     ):
+        # Storing scheduler configuration
         self.policy = policy
         self.workers = workers
         self.queue_size = queue_size
         self.reject_when_full = reject_when_full
         self.query_handler = query_handler
 
+        # Event used to coordinate shutdown across worker and stats threads.
         self._stop = threading.Event()
+
+        # Track worker thread objects so they can be joined during shutdown.
         self._threads: list[threading.Thread] = []
+
+        # Separate background thread for periodically reporting scheduler stats.
         self._stats_thread: Optional[threading.Thread] = None
 
+        # Lock protects shared scheduler metrics from concurrent updates.
         self._lock = threading.Lock()
+
+        # Runtime metrics used by the stats reporter.
         self._processed = 0
         self._total_latency = 0.0
         self._start_time = time.time()
@@ -47,6 +58,7 @@ class ThreadPoolScheduler:
         Start worker threads and stats reporter.
         """
 
+        # Creates and starts each worker thread
         for worker_id in range(self.workers):
             thread = threading.Thread(
                 target=self._worker_loop,
@@ -56,6 +68,7 @@ class ThreadPoolScheduler:
             thread.start()
             self._threads.append(thread)
 
+        # Background thread for metrics
         self._stats_thread = threading.Thread(
             target=self._stats_loop,
             daemon=True
