@@ -1,14 +1,12 @@
-#Page object --- slot in memory holding a page from disk
+# Page object --- slot in memory holding a page from disk
 
-#Index: Index of the page in the buffer pool
-#Page_number: Unique identifier for the page
-#Pin_Count: Number of times the page is pinned (in use)
-#Dirty: Whether the page has been modified since it was read from disk
-#State: Used by the replacer to determine the status of the page (e.g., available, referenced, pinned)
+# Index:       Index of the page in the buffer pool
+# page_number: Unique identifier for the page
+# _pinned:     Whether the page is currently pinned (in use)
+# dirty:       Whether the page has been modified since it was read from disk
+# state:       Used by the replacer to determine eviction eligibility
 
-
-
-from uuid import uuid4 #Allows for page number generation
+from uuid import uuid4
 
 class Page:
     AVAILABLE  = -1
@@ -16,30 +14,30 @@ class Page:
     PINNED     =  1
 
     def __init__(self, id, size):
-        self.index = id
+        self.index       = id
         self.page_number = uuid4()
-        self.is_pinned = 0
-        self.dirty = False
-        self.state = Page.AVAILABLE
-        self.data       = []
+        self._pinned     = 0 
+        self.dirty       = False
+        self.state       = Page.AVAILABLE
+        self.data        = []
 
     def increment_pin_count(self):
-        self.is_pinned = 1
+        self._pinned += 1
 
     def decrement_pin_count(self):
-        self.is_pinned = 0
+        if self._pinned > 0:
+            self._pinned -= 1
+
+    def is_pinned(self):
+        return self._pinned > 0
 
     def is_dirty(self):
         return self.dirty
-    
-    def is_pinned(self):
-        return self.is_pinned > 0
-    
-    #Clearing page data and resetting metadata for reuse
-    def reset(self):
-        self.page_id   = None
-        self.pin_count = 0
-        self.dirty     = False
-        self.state     = Page.AVAILABLE
-        self.data      = []
 
+    # Clearing page data and resetting metadata for reuse
+    def reset(self):
+        self.index       = None
+        self._pinned     = 0
+        self.dirty       = False
+        self.state       = Page.AVAILABLE
+        self.data        = []
