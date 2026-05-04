@@ -52,3 +52,11 @@ class Task:
 
     query: Optional[Query]
     enqueued_at: float = field(default_factory=time.time)
+
+    def __lt__(self, other: "Task") -> bool:
+        """
+        Tiebreaker for PriorityQueue when two tasks have equal priority tuples.
+        Earlier-enqueued tasks win, which preserves arrival order within a
+        priority level and prevents Task vs Task comparison crashes.
+        """
+        return self.enqueued_at < other.enqueued_at
