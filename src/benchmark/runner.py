@@ -26,45 +26,56 @@ from interfaces import Query
 DATA_FILE   = os.path.join(os.path.dirname(__file__), "..", "data", "weather.csv")
 RESULTS_DIR = os.path.join(os.path.dirname(__file__), "results")
 
-# Frame counts well below the 15-page dataset to create real eviction pressure
+# Dataset is 2018-2023 = ~2189 rows = ~22 pages at 100 rows/page.
+# Frame counts well below 22 to create real eviction pressure.
 FRAME_COUNTS  = [4, 8, 12]
 CLIENT_COUNTS = [2, 4, 8]
 
-# Large, varied query set — mix of short, medium, long, and overlapping ranges.
-# More queries + shorter ranges = more page fetches = meaningful eviction differences.
+# Large, varied query set spanning the full 2018-2023 dataset.
+# Mix of short, medium, long, and overlapping ranges across all 6 years.
+# More page requests across a wider dataset = meaningful eviction differences.
 QUERY_DEFINITIONS = [
-    # Short single-month queries (1 page each) — high repetition creates hit opportunities
+    # Short single-month queries — one page each, spread across all years
     ("2018-01-01", "2018-01-31", "client-A", 1),
-    ("2018-02-01", "2018-02-28", "client-B", 1),
-    ("2018-03-01", "2018-03-31", "client-C", 1),
-    ("2018-04-01", "2018-04-30", "client-D", 1),
-    ("2018-05-01", "2018-05-31", "client-A", 1),
     ("2018-06-01", "2018-06-30", "client-B", 1),
-    ("2018-07-01", "2018-07-31", "client-C", 1),
-    ("2018-08-01", "2018-08-31", "client-D", 1),
-    ("2018-09-01", "2018-09-30", "client-A", 1),
-    ("2018-10-01", "2018-10-31", "client-B", 1),
-    ("2018-11-01", "2018-11-30", "client-C", 1),
-    ("2018-12-01", "2018-12-31", "client-D", 1),
-    # Medium two-month queries — cross page boundaries
-    ("2018-01-15", "2018-03-15", "client-A", 3),
-    ("2018-03-15", "2018-05-15", "client-B", 3),
-    ("2018-05-15", "2018-07-15", "client-C", 3),
-    ("2018-07-15", "2018-09-15", "client-D", 3),
-    ("2018-09-15", "2018-11-15", "client-A", 3),
-    # Long quarter queries — span 3-4 pages, stress eviction at low frame counts
-    ("2018-01-01", "2018-03-31", "client-B", 5),
-    ("2018-04-01", "2018-06-30", "client-C", 5),
-    ("2018-07-01", "2018-09-30", "client-D", 5),
-    ("2018-10-01", "2018-12-31", "client-A", 5),
-    # Repeat short queries — these should be buffer hits if replacer works well
-    ("2018-01-01", "2018-01-31", "client-B", 1),
-    ("2018-06-01", "2018-06-30", "client-C", 1),
-    ("2018-12-01", "2018-12-31", "client-D", 1),
-    # Overlapping ranges — intentionally re-request pages already in buffer
-    ("2018-01-10", "2018-02-10", "client-A", 2),
-    ("2018-06-10", "2018-07-10", "client-B", 2),
-    ("2018-11-10", "2018-12-10", "client-C", 2),
+    ("2018-12-01", "2018-12-31", "client-C", 1),
+    ("2019-01-01", "2019-01-31", "client-D", 1),
+    ("2019-06-01", "2019-06-30", "client-A", 1),
+    ("2019-12-01", "2019-12-31", "client-B", 1),
+    ("2020-01-01", "2020-01-31", "client-C", 1),
+    ("2020-06-01", "2020-06-30", "client-D", 1),
+    ("2020-12-01", "2020-12-31", "client-A", 1),
+    ("2021-01-01", "2021-01-31", "client-B", 1),
+    ("2021-06-01", "2021-06-30", "client-C", 1),
+    ("2021-12-01", "2021-12-31", "client-D", 1),
+    ("2022-01-01", "2022-01-31", "client-A", 1),
+    ("2022-06-01", "2022-06-30", "client-B", 1),
+    ("2022-12-01", "2022-12-31", "client-C", 1),
+    ("2023-01-01", "2023-01-31", "client-D", 1),
+    ("2023-06-01", "2023-06-30", "client-A", 1),
+    ("2023-12-01", "2023-12-31", "client-B", 1),
+    # Medium quarter-year queries — cross multiple page boundaries
+    ("2018-01-01", "2018-03-31", "client-C", 3),
+    ("2019-04-01", "2019-06-30", "client-D", 3),
+    ("2020-07-01", "2020-09-30", "client-A", 3),
+    ("2021-10-01", "2021-12-31", "client-B", 3),
+    ("2022-01-01", "2022-03-31", "client-C", 3),
+    ("2023-07-01", "2023-09-30", "client-D", 3),
+    # Long half-year queries — span ~6 pages, heavy eviction pressure at 4 frames
+    ("2018-01-01", "2018-06-30", "client-A", 5),
+    ("2019-07-01", "2019-12-31", "client-B", 5),
+    ("2020-01-01", "2020-06-30", "client-C", 5),
+    ("2021-07-01", "2021-12-31", "client-D", 5),
+    ("2022-01-01", "2022-06-30", "client-A", 5),
+    ("2023-07-01", "2023-12-31", "client-B", 5),
+    # Repeat short queries — should be buffer hits if replacer protects hot pages
+    ("2018-01-01", "2018-01-31", "client-C", 1),
+    ("2020-06-01", "2020-06-30", "client-D", 1),
+    ("2023-12-01", "2023-12-31", "client-A", 1),
+    # Overlapping ranges — intentionally re-request pages already loaded
+    ("2018-01-15", "2018-02-15", "client-B", 2),
+    ("2020-06-15", "2020-07-15", "client-C", 2),
+    ("2023-11-15", "2023-12-15", "client-D", 2),
 ]
 
 

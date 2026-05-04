@@ -84,16 +84,18 @@ def main():
     print(f"[main] scheduler started — {args.clients} workers, {args.policy} policy")
 
     # ── 4. Smoke-test query batch ────────────────────────────────────────
-    # A small set of date-range queries that exercise the full pipeline.
+    # Queries span the full 2018-2023 dataset to exercise all pages.
     # Replace this section with server.py once the TCP layer is ready.
     queries = [
-        Query("2018-01-01", "2018-03-31", client_id="client-A"),
-        Query("2018-04-01", "2018-06-30", client_id="client-B"),
-        Query("2018-07-01", "2018-09-30", client_id="client-C"),
-        Query("2018-10-01", "2018-12-31", client_id="client-D"),
+        Query("2018-01-01", "2018-06-30", client_id="client-A"),
+        Query("2019-01-01", "2019-06-30", client_id="client-B"),
+        Query("2020-01-01", "2020-06-30", client_id="client-C"),
+        Query("2021-01-01", "2021-06-30", client_id="client-D"),
+        Query("2022-01-01", "2022-06-30", client_id="client-A"),
+        Query("2023-01-01", "2023-06-30", client_id="client-B"),
         # Overlapping ranges — should produce buffer hits
-        Query("2018-01-15", "2018-04-15", client_id="client-A"),
-        Query("2018-06-01", "2018-08-31", client_id="client-B"),
+        Query("2018-03-01", "2018-09-30", client_id="client-C"),
+        Query("2020-03-01", "2020-09-30", client_id="client-D"),
     ]
 
     for query in queries:
@@ -102,7 +104,6 @@ def main():
         print(f"[main] query {query.query_id} ({query.start_date} → {query.end_date}) {status}")
 
     # ── 5. Wait for queries to drain, then print final stats ─────────────
-    # Give workers time to finish all submitted queries
     time.sleep(len(queries) * 0.5 + 2.0)
     scheduler.stop()
 
