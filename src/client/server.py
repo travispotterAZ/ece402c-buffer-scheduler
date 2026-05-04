@@ -12,7 +12,7 @@ from data.index import adding_index
 from buffer.buffer_manager import BufferPoolManager
 from scheduler.scheduler import ThreadPoolScheduler
 from scheduler.fcfs import FCFSScheduler
-from interfaces import Query
+from interfaces import Query, Task
 
 HOST = '127.0.0.1'
 PORT = 8080
@@ -48,11 +48,15 @@ def handle_query(line: str) -> str:
             if len(parts) < 8:
                 return "the QUERY requires a date argument"
             
-            start_date = parts[5]
-            end_date = parts[7]
+            if 'BETWEEN' not in parts:
+                return "wrong QUERY"
+
+            start_date = parts[-3]
+            end_date = parts[-1]
 
             query = Query(start_date=start_date, end_date=end_date)
-            scheduler.submit(query)
+            task = Task(query=query)
+            scheduler.submit(task)
 
             matching_pages = set()
             for date, page_id in index.items():
