@@ -20,7 +20,7 @@ class Page:
         self.page_number = uuid4()
         self.is_pinned = 0
         self.dirty = False
-        self.state = AVAILABLE
+        self.state = Page.AVAILABLE
         self.data       = []
 
     def increment_pin_count(self):

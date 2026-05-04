@@ -9,15 +9,15 @@ from buffer.disk_manager import DiskManager
 class BufferPoolManager:
 
     def __init__(self, no_of_pages):
+        self.no_of_pages = no_of_pages
         self.buffer_pool = []
         self.disk_manager = DiskManager(64)
 
         for i in range(no_of_pages):
-            self.buffer_pool[i] = Page(i, 64)  # Setting default page size to 64
+            self.buffer_pool.append(Page(i, 64))  # Setting default page size to 64
 
         self.replacer = LRUReplacer(self)
         self.page_map = {}
-        self.no_of_pages = no_of_pages
 
     def __len__(self):
         return self.no_of_pages
