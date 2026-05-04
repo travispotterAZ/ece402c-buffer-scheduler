@@ -1,11 +1,26 @@
 # Author: Ryan Brass
+#
+# Co-Author: Travis Potter
+#
 # Defines thread pool scheduler that manages processing of weather query tasks
 import queue
 import threading
 import time
+from datetime import datetime
 from typing import Callable, Optional
 
 from interfaces import Query, Task
+from scheduler.fcfs import FCFSScheduler
+from scheduler.priority import PriorityScheduler
+from scheduler.round_robin import RoundRobinScheduler
+from data.index import get_page_ids_for_range
+
+
+POLICIES = {
+    "fcfs":     FCFSScheduler,
+    "rr":       RoundRobinScheduler,
+    "priority": PriorityScheduler,
+}
 
 
 class ThreadPoolScheduler:
@@ -18,7 +33,6 @@ class ThreadPoolScheduler:
     - has stop event
     - tracks processed count and average latency
     - worker threads repeatedly pull tasks and process them
-
     """
 
     def __init__(
@@ -28,6 +42,8 @@ class ThreadPoolScheduler:
         queue_size: int = 500,
         reject_when_full: bool = False,
         query_handler: Optional[Callable[[Query, int], str]] = None,
+        buffer_manager=None,
+        date_index: Optional[dict] = None,
     ):
         # Storing scheduler configuration
         self.policy = policy
@@ -35,6 +51,10 @@ class ThreadPoolScheduler:
         self.queue_size = queue_size
         self.reject_when_full = reject_when_full
         self.query_handler = query_handler
+
+        # Buffer manager and date index used by the real query handler
+        self.buffer_manager = buffer_manager
+        self.date_index = date_index
 
         # Event used to coordinate shutdown across worker and stats threads.
         self._stop = threading.Event()
@@ -51,14 +71,14 @@ class ThreadPoolScheduler:
         # Runtime metrics used by the stats reporter.
         self._processed = 0
         self._total_latency = 0.0
+        self._page_faults = 0
+        self._page_hits = 0
         self._start_time = time.time()
 
     def start(self) -> None:
         """
         Start worker threads and stats reporter.
         """
-
-        # Creates and starts each worker thread
         for worker_id in range(self.workers):
             thread = threading.Thread(
                 target=self._worker_loop,
@@ -68,7 +88,6 @@ class ThreadPoolScheduler:
             thread.start()
             self._threads.append(thread)
 
-        # Background thread for metrics
         self._stats_thread = threading.Thread(
             target=self._stats_loop,
             daemon=True
@@ -82,7 +101,6 @@ class ThreadPoolScheduler:
         Sends sentinel tasks to wake workers that may be blocked waiting
         for work.
         """
-
         self._stop.set()
 
         for _ in range(self.workers):
@@ -104,7 +122,6 @@ class ThreadPoolScheduler:
         Returns True if the query was accepted.
         Returns False if the queue was full and reject_when_full=True.
         """
-
         task = Task(query=query)
 
         try:
@@ -118,11 +135,31 @@ class ThreadPoolScheduler:
         except queue.Full:
             return False
 
+    def get_stats(self) -> dict:
+        """
+        Return a snapshot of current scheduler metrics.
+        Used by the benchmark runner to collect results.
+        """
+        with self._lock:
+            processed = self._processed
+            total_latency = self._total_latency
+            page_faults = self._page_faults
+            page_hits = self._page_hits
+
+        elapsed = time.time() - self._start_time
+        return {
+            "processed":       processed,
+            "avg_latency_ms":  (total_latency / processed * 1000.0) if processed else 0.0,
+            "rps":             processed / elapsed if elapsed > 0 else 0.0,
+            "page_faults":     page_faults,
+            "page_hits":       page_hits,
+            "elapsed_s":       elapsed,
+        }
+
     def _worker_loop(self, worker_id: int) -> None:
         """
         Worker threads repeatedly pull tasks from the selected scheduling policy.
         """
-
         while not self._stop.is_set():
             task = self.policy.get_next()
 
@@ -149,51 +186,86 @@ class ThreadPoolScheduler:
 
             self.policy.task_done()
 
-    def _default_query_handler(self, query: Query, worker_id: int) -> str:
+    def _default_query_handler(self, query: Query, worker_id: int) -> list:
         """
-        Temporary placeholder query handler.
+        Real query handler — ties together the date index, buffer manager,
+        and page data to answer a date-range weather query.
 
-        Later, this should call:
-        - date index
-        - buffer manager
-        - disk manager
-        - result formatter
+        Pipeline:
+            1. Look up which page IDs cover the requested date range
+            2. Check which pages are already in the buffer (hits) vs need loading (faults)
+            3. Fetch each page through the buffer manager (handles eviction automatically)
+            4. Filter rows to only those within [start_date, end_date]
+            5. Unpin each page once its rows have been read
         """
-
         print(
             f"[worker {worker_id}] processing query {query.query_id}: "
             f"{query.start_date} to {query.end_date}"
         )
 
-        time.sleep(0.25)
+        if self.buffer_manager is None or self.date_index is None:
+            print(f"[worker {worker_id}] buffer_manager or date_index not set — skipping")
+            return []
 
-        print(f"[worker {worker_id}] finished query {query.query_id}")
+        start = datetime.fromisoformat(query.start_date)
+        end   = datetime.fromisoformat(query.end_date)
 
-        return "OK"
+        page_ids = get_page_ids_for_range(self.date_index, query.start_date, query.end_date)
+
+        results = []
+        fetched_page_ids = []
+
+        for page_id in page_ids:
+
+            # Sub-range hit detection — check if already in buffer before fetching
+            if page_id in self.buffer_manager.page_map:
+                with self._lock:
+                    self._page_hits += 1
+            else:
+                with self._lock:
+                    self._page_faults += 1
+
+            page = self.buffer_manager.fetchPage(page_id)
+
+            if page is None:
+                print(f"[worker {worker_id}] could not fetch page {page_id} — all frames pinned")
+                continue
+
+            fetched_page_ids.append(page_id)
+
+            # Filter rows within the exact date range
+            for row in page.data:
+                try:
+                    row_date = datetime.fromisoformat(row["DATE"])
+                    if start <= row_date <= end:
+                        results.append(row)
+                except (KeyError, ValueError):
+                    continue
+
+        # Unpin all pages now that we are done reading them
+        for page_id in fetched_page_ids:
+            self.buffer_manager.unpinPage(page_id, is_dirty=False)
+
+        print(
+            f"[worker {worker_id}] finished query {query.query_id} — "
+            f"{len(results)} rows from {len(fetched_page_ids)} pages"
+        )
+
+        return results
 
     def _stats_loop(self) -> None:
         """
         Periodically print scheduler statistics.
         """
-
         while not self._stop.is_set():
             time.sleep(2.0)
 
-            with self._lock:
-                processed = self._processed
-                avg_ms = (
-                    self._total_latency / processed * 1000.0
-                    if processed
-                    else 0.0
-                )
-
-            qlen = self.policy.qsize()
-            elapsed = time.time() - self._start_time
-            rps = processed / elapsed if elapsed > 0 else 0.0
+            stats = self.get_stats()
 
             print(
-                f"[stats] processed={processed} "
-                f"avg_latency_ms={avg_ms:.2f} "
-                f"qlen={qlen} "
-                f"rps={rps:.2f}"
+                f"[stats] processed={stats['processed']} "
+                f"avg_latency_ms={stats['avg_latency_ms']:.2f} "
+                f"rps={stats['rps']:.2f} "
+                f"page_hits={stats['page_hits']} "
+                f"page_faults={stats['page_faults']}"
             )
