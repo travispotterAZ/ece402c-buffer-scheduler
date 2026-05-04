@@ -17,18 +17,18 @@ from interfaces import Query, Task
 HOST = '127.0.0.1'
 PORT = 8080
 
-# Initialize scheduler with FCFS and start the worker threads
-policy = FCFSScheduler()
-scheduler = ThreadPoolScheduler(policy=policy)
-scheduler.start()
-
-# Initialize buffer pool with 32 frames
-buffer_pool = BufferPoolManager(32)
-
 # Load The weather data from csv and build date index
 pages = load_csv('data/weather.csv')
 index = adding_index(pages)
 print(f"Loaded {len(pages)} pages, {len(index)} dates indexed")
+
+# Initialize buffer pool with enough frames for all pages
+buffer_pool = BufferPoolManager(len(pages))
+
+# Initialize scheduler with FCFS and start the worker threads
+policy = FCFSScheduler()
+scheduler = ThreadPoolScheduler(policy=policy, buffer_manager=buffer_pool, date_index=index, )
+scheduler.start()
 
 def handle_query(line: str) -> str:
     """
@@ -46,30 +46,23 @@ def handle_query(line: str) -> str:
     try:
         if op == 'QUERY':  
             if 'BETWEEN' not in parts:
-                return "wrong QUERY"
+                return "ERR wrong QUERY format"
 
-            start_date = parts[-3]
-            end_date = parts[-1]
+            between_idx = parts.index('BETWEEN')
+            and_idx = parts.index('AND')
+
+            start_date = parts[between_idx + 1]
+            end_date = parts[and_idx + 1]
 
             query = Query(start_date=start_date, end_date=end_date)
-            task = Task(query=query)
-            scheduler.submit(task)
+            accept = scheduler.submit(query)
 
-            matching_pages = set()
-            for date, page_id in index.items():
-                if start_date <= date <= end_date:
-                    matching_pages.add(page_id)
-
-            results = []
-            for page_id in matching_pages:
-                page = buffer_pool.fetchPage(page_id)
-                if page is not None:
-                    results.append(page)
-
-            if matching_pages:
-                return f"OK {len(matching_pages)} pages found: {', '.join(map(str, matching_pages))}"
-            else:
-                return "OK no pages found"
+            if not accept:
+                return "ERR server in use"
+        else:
+            return f"ERR invalid command: {op}"
+        
+        return f"OK query accepted: {start_date} to {end_date}"
     except (ValueError, IndexError):
         return "ERR invalid argument"
 
