@@ -44,10 +44,7 @@ def handle_query(line: str) -> str:
     op = parts[0].upper()
 
     try:
-        if op == 'QUERY':
-            if len(parts) < 8:
-                return "the QUERY requires a date argument"
-            
+        if op == 'QUERY':  
             if 'BETWEEN' not in parts:
                 return "wrong QUERY"
 
@@ -66,7 +63,8 @@ def handle_query(line: str) -> str:
             results = []
             for page_id in matching_pages:
                 page = buffer_pool.fetchPage(page_id)
-                results.append(page)
+                if page is not None:
+                    results.append(page)
 
             if matching_pages:
                 return f"OK {len(matching_pages)} pages found: {', '.join(map(str, matching_pages))}"
