@@ -23,7 +23,7 @@ for policy in policies:
         time.sleep(3)
         
         client = subprocess.run(
-            ['python', 'client/client.py', '--start', '2020-01-01', '--end', '2020-06-30'],
+            ['python', 'client/client.py', '--start', '2020-01-01', '--end', '2020-05-31'],
             capture_output=True,
             text=True
         )
