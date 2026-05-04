@@ -1,10 +1,28 @@
 # Author: Ryan Brass
 # Tests sample weather queries with priority scheduler
+
 import time
 
 from interfaces import Query
 from scheduler.priority import PriorityScheduler
 from scheduler.scheduler import ThreadPoolScheduler
+
+
+def fake_query_handler(query, worker_id):
+    """
+    Fake handler for smoke testing.
+
+    Priority should process shorter estimated query ranges first.
+    If estimated sizes tie, lower priority number goes first.
+    """
+    print(
+        f"[worker {worker_id}] handled query {query.query_id}: "
+        f"client={query.client_id}, "
+        f"estimated_size={query.estimated_size()}, "
+        f"priority={query.priority}"
+    )
+    time.sleep(0.1)
+    return []
 
 
 def main():
@@ -14,7 +32,8 @@ def main():
         policy=policy,
         workers=1,
         queue_size=500,
-        reject_when_full=False
+        reject_when_full=False,
+        query_handler=fake_query_handler
     )
 
     queries = [
@@ -39,7 +58,11 @@ def main():
 
     scheduler.start()
 
-    time.sleep(5)
+    time.sleep(2)
+
+    stats = scheduler.get_stats()
+    print(f"[main] final stats: {stats}")
+
     scheduler.stop()
 
 

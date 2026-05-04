@@ -1,10 +1,27 @@
 # Author: Ryan Brass
 # Tests sample weather queries with round robin scheduler
+
 import time
 
 from interfaces import Query
 from scheduler.round_robin import RoundRobinScheduler
 from scheduler.scheduler import ThreadPoolScheduler
+
+
+def fake_query_handler(query, worker_id):
+    """
+    Fake handler for smoke testing.
+
+    Round robin should rotate between active clients instead of letting
+    one client consume the entire queue first.
+    """
+    print(
+        f"[worker {worker_id}] handled query {query.query_id}: "
+        f"client={query.client_id}, "
+        f"{query.start_date} to {query.end_date}"
+    )
+    time.sleep(0.1)
+    return []
 
 
 def main():
@@ -14,10 +31,9 @@ def main():
         policy=policy,
         workers=1,
         queue_size=500,
-        reject_when_full=False
+        reject_when_full=False,
+        query_handler=fake_query_handler
     )
-
-    scheduler.start()
 
     queries = [
         Query("2020-01-01", "2020-01-05", client_id="A"),
@@ -44,7 +60,13 @@ def main():
                 f"from client {query.client_id}"
             )
 
-    time.sleep(5)
+    scheduler.start()
+
+    time.sleep(2)
+
+    stats = scheduler.get_stats()
+    print(f"[main] final stats: {stats}")
+
     scheduler.stop()
 
 
