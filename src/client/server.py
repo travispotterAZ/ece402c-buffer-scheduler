@@ -25,6 +25,13 @@ print(f"Loaded {len(pages)} pages, {len(index)} dates indexed")
 # Initialize buffer pool with enough frames for all pages
 buffer_pool = BufferPoolManager(len(pages))
 
+# Pre-load pages into the buffer pool
+for i, page_data in enumerate(pages):
+    frame = buffer_pool.buffer_pool[i]
+    frame.data = page_data
+    frame.index = i
+    buffer_pool.page_map[i] = i
+
 # Initialize scheduler with FCFS and start the worker threads
 policy = FCFSScheduler()
 scheduler = ThreadPoolScheduler(policy=policy, buffer_manager=buffer_pool, date_index=index, )
