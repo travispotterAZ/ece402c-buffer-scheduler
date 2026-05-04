@@ -1,3 +1,4 @@
+#Author: Sourced Material from GitHub
 #LRU Algorithm --- evict the least recently used page when a victim is needed
 # - Uses a circular list to track the state of pages in the buffer pool
 
@@ -18,17 +19,17 @@ class LRUReplacer(Replacer):
         self.head = -1
 
     def insert(self, page):
-        page.state = self.REFERENCED
+        page.state = Page.REFERENCED
 
     def victim(self):
         if self.frame_table:
             for i in range(2 * len(self.frame_table)):
                 self.head = (self.head + 1) % len(self.frame_table)
 
-                if self.frame_table[self.head].state == self.REFERENCED:
-                    self.frame_table[self.head].state = self.AVAILABLE
+                if self.frame_table[self.head].state == Page.REFERENCED:
+                    self.frame_table[self.head].state = Page.AVAILABLE
 
-                elif self.frame_table[self.head].state == self.AVAILABLE:
+                elif self.frame_table[self.head].state == Page.AVAILABLE:
                     return self.frame_table[self.head]
 
         return None
